@@ -1,0 +1,83 @@
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+name: CI
+
+on:
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 1. Traer el código
+        uses: actions/checkout@v4
+
+      - name: 2. Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 3. Instalar dependencias
+        run: npm ci
+
+      - name: 4. Levantar la app
+        run: docker compose up -d
+
+      - name: 5. Esperar a que responda
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "La app no respondió"; exit 1
+
+      - name: 6. Ejecutar las pruebas ← REEMPLAZA ESTO
+        env:
+          BASE_URL: http://localhost:3000
+        run: |
+          echo "==================================================="
+          echo "  Aquí van LOS COMANDOS DE TU AUTOMATIZACIÓN."
+          echo ""
+          echo "  Playwright : npx playwright test"
+          echo "  Cypress    : npx cypress run"
+          echo "  Selenium   : pytest tests/"
+          echo ""
+          echo "  Borra este mensaje y pon tu comando."
+          echo "==================================================="
+          exit 1
+
+      - name: 7. Evidencia mínima (siempre se genera)
+        if: always()
+        run: |
+          mkdir -p reports
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "run:    $GITHUB_RUN_ID"
+            echo "fecha:  $(date -u)"
+            echo "--- contenedores ---"
+            docker compose ps || true
+          } > reports/entorno.txt
+
+      - name: 8. Guardar evidencias
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias
+          # reports/ existe SIEMPRE: lo crea el step 7
+          # test-results/ solo si TU automatización genera reporte
+          path: |
+            reports/
+            test-results/
+          retention-days: 7
+
+      - name: 9. Logs si algo falla
+        if: failure()
+        run: docker compose logs --tail=200
