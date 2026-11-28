@@ -1,0 +1,27 @@
+{
+  "name": "qa-lab-juice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Proyecto base: Playwright, Cucumber y Screenplay con un healthcheck sobre OWASP Juice Shop",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:headed": "HEADED=true npm test"
+  },
+  "keywords": [
+    "playwright",
+    "cucumber",
+    "screenplay",
+    "testing",
+    "bdd"
+  ],
+  "author": "cedaniel200",
+  "license": "MIT",
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.3.0",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "playwright": "^1.64.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,12 +1,12 @@
-concurrency:
+name: CI
+
+concurrency:  # 2 · nivel del workflow
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-name: CI
-
 on:
   pull_request:
-    paths-ignore: ['**.md', 'docs/**']
+    paths-ignore: ['**.md', 'docs/**']  
   push:
     branches: [main]
 
@@ -22,16 +22,22 @@ jobs:
       - name: 2. Preparar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+          cache-dependency-path: tests/package-lock.json
 
       - name: 3. Instalar dependencias
+        working-directory: tests
         run: npm ci
 
-      - name: 4. Levantar la app
+      - name: 4. Instalar el navegador
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+
+      - name: 5. Levantar la app
         run: docker compose up -d
 
-      - name: 5. Esperar a que responda
+      - name: 6. Esperar a que responda
         run: |
           for i in $(seq 1 60); do
             curl -sf http://localhost:3000/ > /dev/null && exit 0
@@ -39,43 +45,22 @@ jobs:
           done
           echo "La app no respondió"; exit 1
 
-      - name: 6. Ejecutar las pruebas ← REEMPLAZA ESTO
+      - name: 7. Ejecutar las pruebas
+        working-directory: tests
         env:
           BASE_URL: http://localhost:3000
-        run: |
-          echo "==================================================="
-          echo "  Aquí van LOS COMANDOS DE TU AUTOMATIZACIÓN."
-          echo ""
-          echo "  Playwright : npx playwright test"
-          echo "  Cypress    : npx cypress run"
-          echo "  Selenium   : pytest tests/"
-          echo ""
-          echo "  Borra este mensaje y pon tu comando."
-          echo "==================================================="
-          exit 1
-
-      - name: 7. Evidencia mínima (siempre se genera)
-        if: always()
-        run: |
-          mkdir -p reports
-          {
-            echo "commit: $GITHUB_SHA"
-            echo "run:    $GITHUB_RUN_ID"
-            echo "fecha:  $(date -u)"
-            echo "--- contenedores ---"
-            docker compose ps || true
-          } > reports/entorno.txt
+        run: npm test
 
       - name: 8. Guardar evidencias
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: evidencias
-          # reports/ existe SIEMPRE: lo crea el step 7
-          # test-results/ solo si TU automatización genera reporte
+          # el reporte lo genera tu automatización; 
+          # ajusta la ruta a la tuya
           path: |
-            reports/
-            test-results/
+            tests/reports/
+            tests/test-results/
           retention-days: 7
 
       - name: 9. Logs si algo falla
